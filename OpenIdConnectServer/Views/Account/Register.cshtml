@@ -1,0 +1,66 @@
+﻿@model OpenIdConnectServer.ViewModels.RegisterViewModel
+@{
+    ViewData["Title"] = "Create account";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <h2 class="mb-1">Create account</h2>
+        <p class="text-muted mb-4">Already have one? <a asp-action="Login">Sign in</a></p>
+
+        <form asp-action="Register" method="post">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2" role="alert"></div>
+
+            <div class="mb-3">
+                <label asp-for="FullName" class="form-label"></label>
+                <input asp-for="FullName"
+                       class="form-control"
+                       placeholder="John Doe"
+                       autocomplete="name" />
+                <span asp-validation-for="FullName" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email"
+                       class="form-control"
+                       placeholder="you@example.com"
+                       autocomplete="email" />
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label"></label>
+                <input asp-for="Password"
+                       class="form-control"
+                       placeholder="Min. 8 characters"
+                       autocomplete="new-password" />
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-4">
+                <label asp-for="ConfirmPassword" class="form-label"></label>
+                <input asp-for="ConfirmPassword"
+                       class="form-control"
+                       placeholder="Repeat your password"
+                       autocomplete="new-password" />
+                <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Create account</button>
+        </form>
+
+        <hr />
+        <p class="text-center text-muted small">
+            By registering you agree to our
+            <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+        </p>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+}
