@@ -29,17 +29,25 @@ namespace OpenIdConnectServer.Controllers
         }
 
         // ── GET /connect/authorize ────────────────────────────────────────────────
+
+        // Why 2 attributes?
+        // To handle already logged in users (GET) and strangers (POST) with the same action method.
         [HttpGet("~/connect/authorize")]
         [HttpPost("~/connect/authorize")]
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Authorize()
         {
-            var request = HttpContext.GetOpenIddictServerRequest()
-                ?? throw new InvalidOperationException("OpenIddict request not found.");
+
+            // Extracts the parsed OIDC authorization request (client_id, scope, code_challenge, etc.) that OpenIddict already validated from the query string
+            // If OpenIddict hasn't processed this request (wrong route, misconfiguration), it throws immediately rather than continuing with a null
+            var request = HttpContext.GetOpenIddictServerRequest() ?? throw new InvalidOperationException("OpenIddict request not found.");
 
             // Check if the user is already logged in
+            // Tries to read the ASP.NET Identity cookie from the browser
+            // result.Succeeded is true if the user already has a valid login session, false if they're a stranger.
             var result = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
 
+            // If not logged in, issue a Challenge — this triggers ASP.NET Identity to redirect the browser to /Account/Login
             if (!result.Succeeded)
             {
                 // Not logged in — redirect to login page, come back after
@@ -51,10 +59,11 @@ namespace OpenIdConnectServer.Controllers
                     });
             }
 
-            var user = await _userManager.GetUserAsync(result.Principal)
-                ?? throw new InvalidOperationException("User not found.");
+            // Loads the full ApplicationUser object from the database using the identity from the cookie.
+            // Throws if the user was deleted after the cookie was issued — a safety guard.
+            var user = await _userManager.GetUserAsync(result.Principal) ?? throw new InvalidOperationException("User not found.");
 
-            // Build the claims identity for the tokens
+            // Creates a blank claims identity that will be the basis for the tokens.
             var identity = new ClaimsIdentity(authenticationType: TokenValidationParameters.DefaultAuthenticationType, nameType: Claims.Name, roleType: Claims.Role);
 
             // 'sub' is REQUIRED by OIDC spec
@@ -63,7 +72,8 @@ namespace OpenIdConnectServer.Controllers
                     .SetClaim(Claims.Name, user.FullName ?? user.UserName)
                     .SetClaim(Claims.PreferredUsername, user.UserName);
 
-            // Add roles as claims
+            // Loads all roles the user belongs to from the database.
+            // Adds each role as a separate role claim on the identity. If a user has 3 roles, there will be 3 role claims — this is how multi-role membership works in JWT
             var roles = await _userManager.GetRolesAsync(user);
             foreach (var role in roles)
                 identity.AddClaim(Claims.Role, role);
@@ -96,7 +106,7 @@ namespace OpenIdConnectServer.Controllers
 
         // ── POST /connect/token ───────────────────────────────────────────────────
         [HttpPost("~/connect/token")]
-        // [IgnoreAntiForgeryToken]
+        [IgnoreAntiforgeryToken]
         [Produces("application/json")]
         public async Task<IActionResult> Exchange()
         {
@@ -158,8 +168,7 @@ namespace OpenIdConnectServer.Controllers
                 identity.SetScopes(request.GetScopes());
                 identity.SetDestinations(_ => [Destinations.AccessToken]);
 
-                return SignIn(new ClaimsPrincipal(identity),
-                    OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+                return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
             }
 
             throw new NotImplementedException("Unsupported grant type.");
