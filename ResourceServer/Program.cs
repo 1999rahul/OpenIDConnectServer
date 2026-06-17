@@ -29,10 +29,13 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("ReactSpa", policy =>
-        policy.WithOrigins("https://localhost:52813")
+    options.AddPolicy("AllowReactApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:52813")  // Your React app URL
+              .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowAnyMethod());
+              .AllowCredentials();
+    });
 });
 
 var app = builder.Build();
@@ -45,7 +48,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseCors("ReactSpa");
+app.UseCors("AllowReactApp");
 
 app.UseAuthentication();
 
