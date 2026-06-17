@@ -1,3 +1,8 @@
 <Solution>
+  <Project Path="../ReactClient/reactclient.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="../ResourceServer/ResourceServer.csproj" Id="988c2b17-e402-4ae8-a48c-b3ccfc95351a" />
   <Project Path="OpenIdConnectServer.csproj" />
 </Solution>

@@ -9,7 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"), sql => sql.EnableRetryOnFailure(maxRetryCount: 3));  // handles transient failures);
 
     // Tell EF Core that OpenIddict will use this DbContext
     options.UseOpenIddict();
@@ -31,6 +31,10 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LogoutPath = "/Account/Logout";
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
     options.SlidingExpiration = true;
+
+    options.Cookie.HttpOnly = true;  // JS cannot read the cookie — prevents XSS theft
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;  // CSRF protection
 });
 
 builder.Services.AddOpenIddict()
@@ -49,10 +53,8 @@ builder.Services.AddOpenIddict()
         options
             .SetAuthorizationEndpointUris("/connect/authorize")
             .SetTokenEndpointUris("/connect/token")
-            //.SetUserinfoEndpointUris("/connect/userinfo")
             .SetIntrospectionEndpointUris("/connect/introspect")
             .SetRevocationEndpointUris("/connect/revoke");
-            //.SetLogoutEndpointUris("/connect/logout");
 
         // Grant types
         options
@@ -85,8 +87,10 @@ builder.Services.AddOpenIddict()
         options.UseAspNetCore()
                .EnableAuthorizationEndpointPassthrough()  // your controller handles /connect/authorize
                .EnableTokenEndpointPassthrough();          // your controller handles /connect/token
-               //.EnableUserinfoEndpointPassthrough()       // your controller handles /connect/userinfo
-               //.EnableLogoutEndpointPassthrough();
+                                                           //.EnableUserinfoEndpointPassthrough()       // your controller handles /connect/userinfo
+                                                           //.EnableLogoutEndpointPassthrough();
+
+        options.DisableAccessTokenEncryption();
     })
 
     // 4c. Validation — for when this app also acts as a resource server
@@ -101,6 +105,14 @@ builder.Services.AddHostedService<OpenIddictSeeder>();
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("ReactSpa", policy =>
+        policy.WithOrigins("http://localhost:52813")
+              .AllowAnyHeader()
+              .AllowAnyMethod());
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -113,6 +125,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting();
+app.UseCors("ReactSpa");
 
 app.UseAuthentication();
 app.UseAuthorization();

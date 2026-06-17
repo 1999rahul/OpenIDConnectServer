@@ -37,7 +37,6 @@ namespace OpenIdConnectServer.Controllers
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Authorize()
         {
-
             // Extracts the parsed OIDC authorization request (client_id, scope, code_challenge, etc.) that OpenIddict already validated from the query string
             // If OpenIddict hasn't processed this request (wrong route, misconfiguration), it throws immediately rather than continuing with a null
             var request = HttpContext.GetOpenIddictServerRequest() ?? throw new InvalidOperationException("OpenIddict request not found.");
